@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { getMeetingData } from '../services/roomService.js';
+import { fetchLoginUserProfile } from '../services/authService.js';
+import { socket } from '../services/socket.js';
+
 import MicIcon from '@mui/icons-material/Mic';
 import VideocamOutlinedIcon from '@mui/icons-material/VideocamOutlined';
 import PresentToAllOutlinedIcon from '@mui/icons-material/PresentToAllOutlined';
@@ -9,9 +13,6 @@ import MicOffIcon from '@mui/icons-material/MicOff';
 import VideocamOffOutlinedIcon from '@mui/icons-material/VideocamOffOutlined';
 import CancelPresentationOutlinedIcon from '@mui/icons-material/CancelPresentationOutlined';
 import CircularProgress from '@mui/material/CircularProgress';
-import { getMeetingData } from '../services/roomService.js';
-import { fetchLoginUserProfile } from '../services/authService.js';
-import { socket } from '../services/socket.js';
 
 export default function MeetingRoom({ loginUser, handleSnackbar }) {
 
@@ -21,6 +22,22 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
 
     const [isLoading, setIsLoading] = useState(false);
     const [currMeeting, setCurrMeeting] = useState(null);
+    const [isMutedMic, setIsMutedMic] = useState(true);
+    const [isVideoOn, setIsVideoOn] = useState(true);
+    const [isShareScreen, setIsShareScreen] = useState(false);
+    const [userMessage, setUserMessage] = useState("");
+
+    const mediaStream = useRef(null);
+    const localVideoRef = useRef(null);
+
+    const handleValidationSuccess = ({ message }) => {
+        handleSnackbar(true, message);
+    };
+
+    const handleValidationFailed = ({ message }) => {
+        handleSnackbar(true, message || 'You are not a participant in the current meeting.');
+        navigate("/join-meeting");
+    };
 
     useEffect(() => {
         const handleGetCurrLiveMeeting = async () => {
@@ -31,14 +48,17 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
                 const response = await getMeetingData(meetingId);
 
                 if (response.status === 200) {
-                    setCurrMeeting(response.data.currMeeting);
+                    setCurrMeeting({
+                        ...response.data.currMeeting,
+                        message: response.data.currMeeting.message.reverse(),
+                    });
 
                     const userLogin = await fetchLoginUserProfile();
+                    socket.emit('validate-participation', { meetingId, user_id: userLogin.data.user._id });
 
-                    if (!userLogin.status !== 200 && !response?.data?.currMeeting?.joinUsers.includes(userLogin?.data?.user?._id)) {
-                        handleSnackbar(true, 'You are not a participant in the current meeting. Please join again.');
-                        navigate("/join-meeting");
-                    }
+                    socket.on('validation-success', handleValidationSuccess);
+                    socket.on('validation-failed', handleValidationFailed);
+
                 } else {
                     handleSnackbar(true, response?.error || 'Unable to find current meeting');
                 }
@@ -50,27 +70,17 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
         }
 
         handleGetCurrLiveMeeting();
-    }, []);
 
+        return () => {
+            socket.off('validation-success', handleValidationSuccess);
+            socket.off('validation-failed', handleValidationFailed);
+        }
+    }, [meetingId]);
 
-    const [isMutedMic, setIsMutedMic] = useState(true);
-    const [isVideoOn, setIsVideoOn] = useState(false);
-    const [isShareScreen, setIsShareScreen] = useState(false);
-
-    
-    const mediaStream = useRef(null);
-    
-    const localVideoRef = useRef(null);
-    const [remoteVideoRefs, setRemoteVideoRefs] = useState([]);
-    const peerConnections = useRef({});
-    const localSream = useRef(null);
-
-
- 
     useEffect(() => {
 
         if (isVideoOn) {
-            navigator.mediaDevices.getUserMedia({ video: true, audio: true }) 
+            navigator.mediaDevices.getUserMedia({ video: true, audio: true })
                 .then((stream) => {
                     mediaStream.current = stream;
 
@@ -105,25 +115,61 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
         }
     }, [isVideoOn]);
 
- 
-    const [userMessage, setUserMessage] = useState("");
+    useEffect(() => {
+        const handleLeaveMeetingSuccess = ({ status }) => {
+            if (status) {
+                if (mediaStream.current) {
+                    mediaStream.current.getTracks().forEach((track) => track.stop());
+                }
+                navigate('/');
+            }
+        }
+
+        const handleMeetingNotification = ({ message }) => {
+            handleSnackbar(true, message);
+        }
+
+        const handleMeetingMessage = ({ username, message }) => {
+            setCurrMeeting(prevMeeting => ({
+                ...prevMeeting,
+                message: [{ user: username, message }, ...prevMeeting.message],
+            }));
+            setUserMessage("");
+        }
+
+        socket.on('leave-meeting-success', handleLeaveMeetingSuccess);
+        socket.on('meeting-notification', handleMeetingNotification);
+        socket.on('meeting-message-success', handleMeetingMessage);
+
+        return () => {
+            socket.off('leave-meeting-success', handleLeaveMeetingSuccess);
+            socket.off('meeting-notification', handleMeetingNotification);
+            socket.off('meeting-message-success', handleMeetingMessage);
+        }
+    }, []);
+
+
     const handleMessageSubmit = async (e) => {
         e.preventDefault();
 
         if (!userMessage) {
-            handleSnackbar(true, `Please enter text.`);
+            handleSnackbar(true, `Please enter message..`);
             return;
         }
 
-        currMeeting.message.unshift({ user: loginUser?.username, message: userMessage });
-        setUserMessage("");
+        socket.emit("meeting-message", {
+            meetingId,
+            username: loginUser?.username || 'User',
+            message: userMessage
+        });
     }
 
- 
     const handleLeaveMeeting = () => {
-        if (mediaStream.current) {
-            mediaStream.current.getTracks().forEach((track) => track.stop());
-        }
+        socket.emit('leave-meeting', {
+            meetingId: currMeeting?.meetingId,
+            username: loginUser?.username
+        });
+        navigate('/');
     };
 
 
@@ -136,7 +182,7 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
             }
 
             <div className='h-screen bg-gray-800 flex flex-col'>
-                {/* Leave meeting */}
+
                 <div className='flex align-items-center justify-end p-4'>
                     <button className="px-3 py-1 text-white">Total Users <span className="ps-1">{currMeeting?.joinUsers?.length || 0}</span></button>
                     <button
@@ -146,7 +192,6 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
                         Leave Meeting
                     </button>
                 </div>
-
 
                 <div className='flex-1 flex flex-wrap md:flex-nowrap overflow-hidden px-4 text-white'>
                     {

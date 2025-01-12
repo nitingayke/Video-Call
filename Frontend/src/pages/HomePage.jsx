@@ -1,9 +1,22 @@
-import React from 'react';
-import Navbar from "../components/Navbar.jsx"
-import Footer from '../components/Footer.jsx';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { getApplicationData } from '../services/roomService';
 
 export default function HomePage() {
+
+    const [appData, setAppData] = useState({ totalUsers: 0, totalMeetings: 0 });
+
+    useEffect(() => {
+        const handleAppData = async() => {
+            const response = await getApplicationData();
+
+            if(response.status === 200) {
+                const { totalUser, totalMeeting } = response.data;
+                setAppData({ totalUsers: totalUser, totalMeetings: totalMeeting });
+            }
+        }
+        handleAppData();
+    }, []);
 
     return (
 
@@ -27,11 +40,11 @@ export default function HomePage() {
                 <div className='flex flex-wrap md:flex-nowrap justify-evenly py-7 font-bold'>
                     <div className='w-full md:p-0 pb-6'>
                         <h1 className='text-5xl lg:text-6xl text-gray-400'>Live Users</h1>
-                        <p className='text-4xl py-3 text-orange-700'>89.8M</p>
+                        <p className='text-4xl py-3 text-orange-700'>{appData.totalUsers || 0}</p>
                     </div>
                     <div className='w-full md:p-0 pb-10'>
                         <h1 className='text-5xl lg:text-6xl text-gray-400'>Total Meetings</h1>
-                        <p className='text-4xl py-3 text-orange-700'>50.5K</p>
+                        <p className='text-4xl py-3 text-orange-700'>{appData.totalMeetings || 0}</p>
                     </div>
                 </div>
             </div>

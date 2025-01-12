@@ -10,6 +10,7 @@ dotenv.config();
 import { connectToSocket } from "./routeControllers/socketManager.js";
 import authRoutes from './routes/authRoutes.js';
 import meetingRoutes from "./routes/meetingRoutes.js";
+import applicationRoutes from "./routes/applicationRoute.js";
 
 const app = express();
 const server = createServer(app);
@@ -28,6 +29,8 @@ app.use(cors({
 }));
 
 app.use(express.json());
+
+app.use('/application', applicationRoutes);
 
 app.use('/auth', authRoutes);
 

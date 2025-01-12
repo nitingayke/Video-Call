@@ -41,9 +41,9 @@ export default function RoomHistory({ loginUser }) {
                                     </TableHead>
                                     <TableBody>
                                         {
-                                            loginUser?.meetingHistory?.created?.map((hstr) => (
+                                            loginUser?.meetingHistory?.created?.map((hstr, idx) => (
                                                 <TableRow
-                                                    key={hstr?.meetingId?.createdAt}
+                                                    key={idx}
                                                     sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
                                                     onClick={() => setSelectedMeeting(hstr?.meetingId)}
                                                     className='hover:bg-gray-100'
@@ -69,9 +69,9 @@ export default function RoomHistory({ loginUser }) {
                                         </TableRow>
                                     </TableHead>
                                     <TableBody>
-                                        {loginUser?.meetingHistory?.attended?.map((hstr) => (
+                                        {loginUser?.meetingHistory?.attended?.map((hstr, idx) => (
                                             <TableRow
-                                                key={hstr?.meetingId?.createdAt}
+                                                key={idx}
                                                 sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
                                                 onClick={() => setSelectedMeeting(hstr?.meetingId)}
                                                 className='hover:bg-gray-100'

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import wrapAsync from "../utilErrors/errorHandling.js"
+import wrapAsync from "../utils/errorHandling.js"
 import { getUserProfile, login, register } from "../routeControllers/authController.js";
 
 const router = Router();

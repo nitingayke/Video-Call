@@ -15,6 +15,7 @@ import RoomHistory from './pages/RoomHistory.jsx';
 import ScheduleRoom from './pages/ScheduleRoom.jsx';
 import LinearProgress from '@mui/material/LinearProgress';
 import MeetingRoom from './pages/MeetingRoom.jsx';
+import { socket } from './services/socket.js';
 
 
 function SlideTransition(props) {
@@ -32,6 +33,20 @@ function RouterComponent({ loginUser, handleLoginUser, handleSnackbar }) {
     setIsLoading(status);
   }
 
+  useEffect(() => {
+
+    const handleSocketError = ({ message }) => {
+      handleSnackbar(true, message || "network error, please try again.")
+    }
+
+    socket.on('error', handleSocketError);
+
+    return () => {
+      socket.off('error', handleSocketError);
+    }
+
+  }, []);
+
   return (
     <>
       {showComponent && <Navbar loginUser={loginUser} handleLoginUser={handleLoginUser} handleSnackbar={handleSnackbar} isLoading={isLoading} />}
@@ -42,7 +57,7 @@ function RouterComponent({ loginUser, handleLoginUser, handleSnackbar }) {
         <Route path='/login' element={<Login handleLoginUser={handleLoginUser} handleSnackbar={handleSnackbar} />} />
         <Route path='/signup' element={<Register handleSnackbar={handleSnackbar} />} />
 
-        <Route path='/join-meeting' element={<JoinRoom loginUser={loginUser} handleSnackbar={handleSnackbar} handleIsLoading={handleIsLoading} />} />
+        <Route path='/join-meeting' element={<JoinRoom loginUser={loginUser} handleSnackbar={handleSnackbar} />} />
 
         <Route path='/history' element={<RoomHistory loginUser={loginUser} />} />
 
@@ -109,7 +124,7 @@ function App() {
         TransitionComponent={SlideTransition}
         message={state.message}
         key={SlideTransition.name}
-        autoHideDuration={3600}
+        autoHideDuration={4800}
       />
 
     </BrowserRouter>

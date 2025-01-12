@@ -1,21 +1,38 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import { v4 as uuidv4 } from "uuid";
-import { createNewMeeting } from "../services/roomService.js";
 import { useNavigate } from 'react-router-dom';
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined';
+import { socket } from '../services/socket.js';
+
 
 export default function ScheduleRoom({ loginUser, handleSnackbar, handleIsLoading }) {
 
     const navigate = useNavigate();
+
     const [inputValues, setInputValues] = useState({
-        username: loginUser?.name || "",
+        name: loginUser?.name || "",
         meetingTitle: "",
         meetingID: "",
         meetingPassword: "",
         duration: "",
     });
+
+    useEffect(() => {
+        const handleScheduleMeetingSuccess = ({ status, meetingID, meetingTitle }) => {
+            if (status) {
+                const updatedTitle = meetingTitle?.split(" ").join("-");
+                navigate(`/meeting-room/${meetingID}/${updatedTitle}`);
+            }
+        }
+
+        socket.on('schedule-meeting-success', handleScheduleMeetingSuccess);
+
+        return () => {
+            socket.off('schedule-meeting-success', handleScheduleMeetingSuccess);
+        }
+    }, []);
 
     const [isHidePassword, setIsHidePassword] = useState(true);
 
@@ -27,6 +44,7 @@ export default function ScheduleRoom({ loginUser, handleSnackbar, handleIsLoadin
             handleSnackbar(true, "Duration is too long. Set it to less than 6 hours.")
             return;
         }
+
         if (name === "duration" && value < 0) {
             document.querySelector(".display-error").innerText = "Duration cannot be negative.";
             handleSnackbar(true, "Duration cannot be negative.");
@@ -42,32 +60,27 @@ export default function ScheduleRoom({ loginUser, handleSnackbar, handleIsLoadin
 
     const handleCreateNewMeeting = async () => {
 
-        const { username, meetingTitle, meetingID, meetingPassword, duration } = inputValues;
+        const { name, meetingTitle, meetingID, meetingPassword, duration } = inputValues;
 
-        if (!username || !meetingTitle || !meetingID || !meetingPassword || !duration) {
+        if (!name.trim() || !meetingTitle.trim() || !meetingID.trim() || !meetingPassword.trim() || !duration) {
             document.querySelector(".display-error").innerText = "Please fill out all fields.";
             handleSnackbar(true, "Please fill out all fields.");
             return;
         }
 
-        try {
-            handleIsLoading(true);
-
-            const response = await createNewMeeting(username, meetingTitle, meetingID, meetingPassword, duration, loginUser?.username);
-
-            if (response.status === 200) {
-                handleSnackbar(true, response.data.message);
-                const updatedTitle = meetingTitle.split(" ").join("-");
-                navigate(`/meeting-room/${meetingID}/${updatedTitle}`);
-
-            } else {
-                handleSnackbar(true, response?.error || "Error creating new meeting.");
-            }
-        } catch (error) {
-            handleSnackbar(true, error?.message || "Error creating new meeting.");
-        } finally {
-            handleIsLoading(false);
+        if (!loginUser) {
+            handleSnackbar(true, "Please login first.");
+            return;
         }
+
+        socket.emit('schedule-meeting', {
+            name: name.trim(),
+            username: loginUser?.username,
+            meetingTitle: meetingTitle.trim(),
+            meetingID: meetingID.trim(),
+            meetingPassword: meetingPassword.trim(),
+            duration
+        });
     };
 
     const handleMeetingCredentials = () => {
@@ -96,8 +109,8 @@ export default function ScheduleRoom({ loginUser, handleSnackbar, handleIsLoadin
                         label="Your Name"
                         size="small"
                         className='w-full'
-                        name='username'
-                        value={inputValues.username}
+                        name='name'
+                        value={inputValues.name}
                         onChange={handleOnchangeEvent}
                     />
 

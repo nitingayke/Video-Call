@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
-import { joinNewUserMeeting } from '../services/roomService';
 import { useNavigate } from 'react-router-dom';
+import { socket } from '../services/socket';
 
-export default function JoinRoom({ loginUser, handleSnackbar, handleIsLoading }) {
+export default function JoinRoom({ loginUser, handleSnackbar }) {
 
     const navigate = useNavigate();
 
@@ -21,38 +21,48 @@ export default function JoinRoom({ loginUser, handleSnackbar, handleIsLoading })
         }));
     }
 
-    const handleJoinMeeting = async() => {
+    const handleJoinMeeting = async () => {
 
-        if(!loginUser || !loginUser?._id){
+        if (!loginUser?._id) {
             handleSnackbar(true, "You need to login.");
-            return ;
+            return;
         }
 
         const { meetingID, meetingPassword, username } = inputValues;
-        if(!meetingID || !meetingPassword || !username) {
+        if (!meetingID || !meetingPassword || !username) {
             handleSnackbar(true, 'Please fill in all fields.');
-            return ;
+            return;
         }
 
-        try {
-            handleIsLoading(true);
-            const response = await joinNewUserMeeting(meetingID, meetingPassword, username, loginUser?._id);
-          
-            if(response.status === 200) {
-                handleIsLoading(false);
-                const meetingTitle = response.data.meetingTitle;
-                const updatedTitle = meetingTitle.split(" ").join("-");
-                navigate(`/meeting-room/${meetingID}/${updatedTitle}`);
-                
-            } else {
-                handleSnackbar(true, response?.error || "Error joining meeting.");
-            }
-        } catch (error) {
-            handleSnackbar(true, error?.message || "Error joining meeting.");
-        } finally {
-            handleIsLoading(false);
+        if (!socket.connected) {
+            handleSnackbar(true, 'Server not connected. please try again.');
+            return;
         }
+
+        socket.emit('join-meeting', {
+            meetingID,
+            meetingPassword,
+            user_id: loginUser?._id,
+        });
     }
+
+    useEffect(() => {
+
+        const handleJoinMeetingSuccess = ({ status, meetingTitle, meetingId }) => {
+            if (status) {
+                const updatedTitle = meetingTitle.split(" ").join("-");
+                navigate(`/meeting-room/${meetingId}/${updatedTitle}`);
+            } else {
+                handleSnackbar(true, 'Unable to join meeting, please try again.');
+            }
+        };
+
+        socket.on('join-meeting-success', handleJoinMeetingSuccess);
+
+        return () => {
+            socket.off('join-meeting-success', handleJoinMeetingSuccess);
+        }
+    }, [socket, navigate, handleSnackbar]);
 
     return (
         <div className='flex-1 p-4 md:p-10 text-center'>
