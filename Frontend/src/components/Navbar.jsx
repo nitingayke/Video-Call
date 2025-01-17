@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Button from '@mui/material/Button';
 import Menu from '@mui/material/Menu';
@@ -44,9 +44,36 @@ export default function Navbar({ loginUser, handleLoginUser, handleSnackbar, isL
         navigate("/");
     }
 
+    useEffect(() => {
+
+        const rootElement = document.getElementById('root');
+
+        const handleScollEvent = () => {
+
+
+            const navbar = document.getElementById('nav-bar');
+            const currScroll = rootElement.scrollTop;
+
+            if (navbar) {
+                if (currScroll > 40) {
+                    if (!navbar.classList.contains('shadow-lg')) {
+                        navbar.classList.add('shadow-lg', 'bg-[#f3f4f6cc]');
+                    }
+                } else {
+                    navbar.classList.remove('shadow-lg', 'bg-[#f3f4f6cc]');
+                }
+            }
+        }
+        rootElement.addEventListener('scroll', handleScollEvent);
+
+        return () => {
+            rootElement.removeEventListener('scroll', handleScollEvent);
+        }
+    }, []);
+
     return (
         <>
-            <nav className=' px-4 sticky top-0 left-0 w-full bg-gray-100 z-10'>
+            <nav id='nav-bar' className='px-4 sticky top-0 left-0 w-full z-10'>
                 <header className='py-3 flex justify-between items-center '>
                     <h1 className='font-bold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent text-3xl'>
                         <Link to={"/"} >Live Meeting</Link>
@@ -113,7 +140,7 @@ export default function Navbar({ loginUser, handleLoginUser, handleSnackbar, isL
                     </div>
                 </header>
 
-                { 
+                {
                     isLoading && <div>
                         <LinearProgress color="secondary" style={{ zIndex: 5000 }} className='' />
                     </div>

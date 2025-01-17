@@ -39,29 +39,16 @@ export default function JoinRoom({ loginUser, handleSnackbar }) {
             return;
         }
 
-        socket.emit('join-meeting', {
-            meetingID,
-            meetingPassword,
-            user_id: loginUser?._id,
-        });
+        navigate(`/meeting-room/${meetingID}/${"dfafsad"}`);
     }
 
     useEffect(() => {
 
-        const handleJoinMeetingSuccess = ({ status, meetingTitle, meetingId }) => {
-            if (status) {
-                const updatedTitle = meetingTitle.split(" ").join("-");
-                navigate(`/meeting-room/${meetingId}/${updatedTitle}`);
-            } else {
-                handleSnackbar(true, 'Unable to join meeting, please try again.');
-            }
+        const handleJoinMeetingSuccess = ({ meetingTitle, meetingId }) => {
+            const updatedTitle = meetingTitle.split(" ").join("-");
+            navigate(`/meeting-room/${meetingId}/${updatedTitle}`);
         };
-
-        socket.on('join-meeting-success', handleJoinMeetingSuccess);
-
-        return () => {
-            socket.off('join-meeting-success', handleJoinMeetingSuccess);
-        }
+        
     }, [socket, navigate, handleSnackbar]);
 
     return (

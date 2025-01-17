@@ -13,8 +13,7 @@ import Navbar from './components/Navbar.jsx';
 import Footer from './components/Footer.jsx';
 import RoomHistory from './pages/RoomHistory.jsx';
 import ScheduleRoom from './pages/ScheduleRoom.jsx';
-import LinearProgress from '@mui/material/LinearProgress';
-import MeetingRoom from './pages/MeetingRoom.jsx';
+import MeetingRoom from './pages/playMeeting/MeetingRoom.jsx';
 import { socket } from './services/socket.js';
 
 
