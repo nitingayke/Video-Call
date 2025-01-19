@@ -5,6 +5,7 @@ import Meeting from "../Model/meetingModel.js";
 
 let connections = {};
 
+
 const connectToSocket = (server) => {
     const io = new Server(server, {
         cors: {
@@ -49,6 +50,70 @@ const connectToSocket = (server) => {
             } catch (error) {
                 return socket.emit('error', { status: false, message: error.message || 'An error occurred while scheduling the meeting.' });
             }
+        });
+
+        socket.on("join-meeting", async ({ meetingID, meetingPassword, user_id }) => {
+            try {
+                if (!meetingID || !meetingPassword || !user_id) {
+                    return socket.emit('error', { message: "Missing required fields" });
+                }
+                if (!connections[meetingID]) {
+                    return socket.emit('error', { message: "Meeting not found or has ended." });
+                }
+                if (connections[meetingID].length >= 2) {
+                    return socket.emit('error', { message: 'Meeting is full. Limit is 4 participants.' });
+                }
+
+                const user = await getUserData(user_id);
+                const meeting = await getMeetingData(meetingID);
+
+                if (!meeting) {
+                    return socket.emit('error', { message: "Meeting not found, please try again." });
+                }
+
+                if (!user) {
+                    return socket.emit('error', { message: "User not found, please try again." });
+                }
+
+                if (!meeting.joinUsers.includes(user_id)) {
+                    meeting.joinUsers.push(user_id);
+                    await meeting.save();
+                }
+
+                user.meetingHistory.attended.addToSet({ meetingId: meeting._id });
+                await user.save();
+
+                connections[meetingID].forEach((socketId) => {
+                    io.to(socketId).emit("new-user-join", { socketId: socket.id, username: user.username });
+                });
+
+                if (!connections[meetingID].includes(socket.id)) {
+                    connections[meetingID].push(socket.id);
+                }
+                socket.emit('join-meeting-success', { status: true, meetingTitle: meeting.title, meetingId: meetingID });
+            
+            } catch (error) {
+                socket.emit('error', { message: error.message || 'An error occurred while joining the meeting.' });
+            }
+        });
+
+        socket.on('new-user-call', async({ socketId, offer, username }) => {
+            io.to(socketId).emit('new-user-join-call', { offer, from: socket.id, username });
+        });
+
+        socket.on('user-call-accepted', ({to, answer}) => {
+            io.to(to).emit('call-accepted-success', {
+                from: socket.id,
+                answer
+            });
+        });
+
+        socket.on('peer-nego-needed', ({ offer, to }) => {
+            io.to(to).emit('peer-nego-success', { from: socket.id, offer });
+        });
+
+        socket.on('peer-nego-done', ({ to, answer }) => {
+            io.to(to).emit('peer-nego-done-success', { from: socket.id, answer });
         });
 
         socket.on("disconnect", () => {

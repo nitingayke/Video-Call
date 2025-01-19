@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getMeetingData } from '../../services/roomService';
+import { socket } from '../../services/socket';
 
 import CircularProgress from '@mui/material/CircularProgress';
 import MeetingButtons from './MeetingButtons';
 import ReactPlayer from 'react-player'
 import DisplayTime from '../../components/DisplayTime';
+import peerService from '../../services/peer.js';
 
 
 const currMeeting = true
@@ -17,8 +19,98 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
     const { meetingId, title } = useParams();
 
     const [localMeeting, setLocalMeeting] = useState(null);
-    const [isLoading, setIsLoading] = useState(false);
     const [myStream, setMyStream] = useState(null);
+    const [remoteStream, setRemoteStream] = useState([]);
+    const [remoteSocketData, setRemoteSocketData] = useState([]);
+
+    const [isLoading, setIsLoading] = useState(false);
+
+    const handleMeetingNotification = ({ message }) => {
+        handleSnackbar(true, message);
+    }
+
+    const handleRemoteUser = async ({ socketId, username }) => {
+
+        setRemoteSocketData((prev) => ([...prev, { socketId, username }]));
+
+        handleSnackbar(true, `${username} joined the meeting.`);
+        const offer = await peerService.getOffer();
+        socket.emit('new-user-call', { socketId, offer, username: loginUser?.username || "Untitle" });
+    };
+
+    const handleUserJoinCall = async ({ offer, from, username }) => {
+        setRemoteSocketData((prev) => [...prev, { socketId: from, username }]);
+
+        const answer = await peerService.getAnswer(offer);
+        socket.emit('user-call-accepted', { to: from, answer });
+    };
+
+    const sendStreams = () => {
+        for (const track of myStream.getTracks()) {
+            peerService.peer.addTrack(track, myStream);
+        }
+    }
+    const handleCallAcceptedSuccess = async ({ from, answer }) => {
+        await peerService.setLocalDescription(answer);
+        sendStreams();
+    }
+    const handleNegoNeedIncomming = async ({ from, offer }) => {
+        const answer = await peerService.getAnswer(offer);
+        socket.emit('peer-nego-done', { to: from, answer });
+    }
+
+    const handleNegoDoneSuccess = async ({ from, answer }) => {
+        await peerService.setLocalDescription(answer);
+    }
+
+    useEffect(() => {
+
+        socket.on('meeting-notification', handleMeetingNotification);
+        socket.on('new-user-join', handleRemoteUser);
+        socket.on('new-user-join-call', handleUserJoinCall);
+        socket.on('call-accepted-success', handleCallAcceptedSuccess);
+        socket.on('peer-nego-success', handleNegoNeedIncomming);
+        socket.on('peer-nego-done-success', handleNegoDoneSuccess);
+
+        return () => {
+            socket.off('meeting-notification', handleMeetingNotification);
+            socket.off('new-user-join', handleRemoteUser);
+            socket.off('new-user-join-call', handleUserJoinCall);
+            socket.off('call-accepted-success', handleCallAcceptedSuccess);
+            socket.off('peer-nego-success', handleNegoNeedIncomming);
+            socket.off('peer-nego-done-success', handleNegoDoneSuccess);
+        }
+    }, [myStream]);
+
+    const handleTrackEvent = (e) => {
+        const remoteStrm = e.streams[0];
+
+        setRemoteStream((prev) => {
+            const exists = prev.some((stream) => stream.id === remoteStrm.id);
+            if (!exists) {
+                return [...prev, remoteStrm];
+            }
+            return prev;
+        });
+    }
+
+    const handleNegoNeede = async () => {
+        const offer = await peerService.getOffer();
+        remoteSocketData.forEach(socketData => {
+            socket.emit('peer-nego-needed', { offer, to: socketData.socketId });
+        });
+    }
+
+    useEffect(() => {
+
+        peerService.peer.addEventListener('track', handleTrackEvent);
+        peerService.peer.addEventListener('negotiationneeded', handleNegoNeede, { once: true });
+
+        return () => {
+            peerService.peer.removeEventListener('track', handleTrackEvent);
+            peerService.peer.removeEventListener('negotiationneeded', handleNegoNeede);
+        }
+    }, [remoteSocketData, socket]);
 
 
 
@@ -65,12 +157,21 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
         getLocalMeetingData();
         handleMediaDevices();
 
+        return () => {
+            setRemoteStream([]);
+            if (myStream) {
+                myStream.getTracks().forEach((track) => track.stop());
+            }
+        };
+
     }, [loginUser]);
 
     const handleCommentSubmit = (e) => {
         e.preventDefault();
 
     }
+
+    console.log(remoteStream);
 
     if (localMeeting) {
         const diff = (new Date() - new Date(localMeeting.createdAt)) / (1000 * 60); // in minute
@@ -80,7 +181,7 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
                 <div className='h-screen flex flex-col py-14 items-center text-white space-y-2 w-full bg-gray-800'>
                     <h1 className='text-2xl text-red-500 font-bold'>Meeting has expired.</h1>
                     <p>Duration: {localMeeting?.duration * 60} minutes</p>
-                    <p>Date: {localMeeting?.createdAt?.substring(0, 10)}</p>
+                    <p>Date: {localMeeting?.createdAt?.substring(0, 10)} / {localMeeting?.createdAt?.substring(11, 19)}</p>
                     <DisplayTime />
                 </div>
             )
@@ -101,7 +202,6 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
             </div>
         )
     }
-
 
     return (
         <>
@@ -125,16 +225,27 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
                 <div className='flex-1 flex flex-wrap md:flex-nowrap overflow-hidden px-4 text-white'>
 
                     <div className='flex flex-wrap w-full'>
-                        <div className="grid grid-cols-2 lg:grid-cols-3 md:h-full overflow-auto md:w-3/5 lg:w-3/4" >
-                            <div className="bg-black border border-black rounded-xl overflow-hidden h-fit">
+                        <div className="meeting-videos grid grid-cols-2 md:h-full overflow-y-auto md:w-3/5 lg:w-3/4 gap-5" >
+
+                      
                                 <ReactPlayer
                                     playing
                                     muted
                                     width="100%"
-                                    height={250}
+                                    height={350}
                                     url={myStream}
                                 />
-                            </div>
+
+                            {remoteStream.map((url, idx) => (
+                                <ReactPlayer
+                                    key={idx}
+                                    playing
+                                    muted
+                                    width="100%"
+                                    height={350}
+                                    url={myStream}
+                                />
+                            ))}
 
                         </div>
 

@@ -41,7 +41,7 @@ export default function RoomHistory({ loginUser }) {
                                     </TableHead>
                                     <TableBody>
                                         {
-                                            loginUser?.meetingHistory?.created?.map((hstr, idx) => (
+                                            loginUser?.meetingHistory?.created?.slice()?.reverse()?.map((hstr, idx) => (
                                                 <TableRow
                                                     key={idx}
                                                     sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
@@ -69,7 +69,7 @@ export default function RoomHistory({ loginUser }) {
                                         </TableRow>
                                     </TableHead>
                                     <TableBody>
-                                        {loginUser?.meetingHistory?.attended?.map((hstr, idx) => (
+                                        {loginUser?.meetingHistory?.attended?.slice()?.reverse().map((hstr, idx) => (
                                             <TableRow
                                                 key={idx}
                                                 sx={{ '&:last-child td, &:last-child th': { border: 0 } }}

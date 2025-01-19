@@ -10,7 +10,7 @@ export default function JoinRoom({ loginUser, handleSnackbar }) {
 
     const [isHidePassword, setIsHidePassword] = useState(true);
 
-    const [inputValues, setInputValues] = useState({ meetingID: "", meetingPassword: "", username: loginUser?.name || "" });
+    const [inputValues, setInputValues] = useState({ meetingID: "", meetingPassword: ""});
 
     const handleInputValues = (e) => {
         const { value, name } = e.target;
@@ -24,22 +24,24 @@ export default function JoinRoom({ loginUser, handleSnackbar }) {
     const handleJoinMeeting = async () => {
 
         if (!loginUser?._id) {
-            handleSnackbar(true, "You need to login.");
-            return;
+            return handleSnackbar(true, "You need to login.");
+            
         }
 
-        const { meetingID, meetingPassword, username } = inputValues;
-        if (!meetingID || !meetingPassword || !username) {
-            handleSnackbar(true, 'Please fill in all fields.');
-            return;
+        const { meetingID, meetingPassword } = inputValues;
+        if (!meetingID || !meetingPassword) {
+            return handleSnackbar(true, 'Please fill in all fields.');
         }
 
         if (!socket.connected) {
-            handleSnackbar(true, 'Server not connected. please try again.');
-            return;
+            return handleSnackbar(true, 'Server not connected. please try again.');
         }
-
-        navigate(`/meeting-room/${meetingID}/${"dfafsad"}`);
+        
+        socket.emit('join-meeting', {
+            meetingID,
+            meetingPassword,
+            user_id: loginUser?._id,
+        });
     }
 
     useEffect(() => {
@@ -49,6 +51,11 @@ export default function JoinRoom({ loginUser, handleSnackbar }) {
             navigate(`/meeting-room/${meetingId}/${updatedTitle}`);
         };
         
+        socket.on('join-meeting-success', handleJoinMeetingSuccess);
+
+        return () => {
+            socket.off('join-meeting-success', handleJoinMeetingSuccess);
+        }
     }, [socket, navigate, handleSnackbar]);
 
     return (
@@ -82,16 +89,6 @@ export default function JoinRoom({ loginUser, handleSnackbar }) {
                         </button>
                     </div>
                 </div>
-
-                <TextField
-                    label="User Name"
-                    type='text'
-                    size="small"
-                    className='w-full'
-                    name='username'
-                    value={inputValues.username}
-                    onChange={handleInputValues}
-                />
 
                 <Button
                     type='button'

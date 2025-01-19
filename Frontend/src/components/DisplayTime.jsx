@@ -10,6 +10,6 @@ export default function DisplayTime() {
         return () => clearInterval(timer);
     }, []);
     return (
-        <p className='current-time'></p>
+        <p className='current-time px-5 text-center'></p>
     )
 }
