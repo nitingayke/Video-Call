@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
+import { useLocation, useParams } from 'react-router-dom';
 import { getMeetingData } from '../../services/roomService';
 import { socket } from '../../services/socket';
 
@@ -10,13 +10,11 @@ import DisplayTime from '../../components/DisplayTime';
 import peerService from '../../services/peer.js';
 
 
-const currMeeting = true
-
-
 export default function MeetingRoom({ loginUser, handleSnackbar }) {
 
-    const navigate = useNavigate();
     const { meetingId, title } = useParams();
+    const location = useLocation();
+    const myStreamRef = useRef(null);
 
     const [localMeeting, setLocalMeeting] = useState(null);
     const [myStream, setMyStream] = useState(null);
@@ -24,9 +22,27 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
     const [remoteSocketData, setRemoteSocketData] = useState([]);
 
     const [isLoading, setIsLoading] = useState(false);
+    const [isJoinMeeting, setIsJoinMeeting] = useState(false);
+    const [meetingMessage, setMeetingMessage] = useState("");
+    const [buttonState, setButtonState] = useState({ isMuteOn: false, isVideoOn: true, isShareOn: false });
+
 
     const handleMeetingNotification = ({ message }) => {
         handleSnackbar(true, message);
+    }
+
+    const handleNewChatMessage = ({ username, message }) => {
+        setLocalMeeting((prev) => ({
+            ...prev,
+            message: [{ user: username, message }, ...prev?.message],
+        }));
+
+        if (username === loginUser?.username) {
+            handleSnackbar(true, `Message sent successfully.`);
+        } else {
+            handleSnackbar(true, `${username} sent a message.`);
+        }
+        setMeetingMessage("");
     }
 
     const handleRemoteUser = async ({ socketId, username }) => {
@@ -46,14 +62,20 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
     };
 
     const sendStreams = () => {
-        for (const track of myStream.getTracks()) {
-            peerService.peer.addTrack(track, myStream);
+        try {
+            for (const track of myStream.getTracks()) {
+                peerService.peer.addTrack(track, myStream);
+            }
+        } catch (error) {
+            handleSnackbar(true, error.message || 'error occured, please try again.')
         }
     }
+
     const handleCallAcceptedSuccess = async ({ from, answer }) => {
         await peerService.setLocalDescription(answer);
         sendStreams();
     }
+
     const handleNegoNeedIncomming = async ({ from, offer }) => {
         const answer = await peerService.getAnswer(offer);
         socket.emit('peer-nego-done', { to: from, answer });
@@ -63,9 +85,26 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
         await peerService.setLocalDescription(answer);
     }
 
+    const handleUserLeft = ({ socketId, streamId, username }) => {
+
+        try {
+
+            remoteStream((prev) => prev.filter((stream) => stream.id !== streamId));
+            setRemoteSocketData((prev) => prev.filter((data) => data.username !== username))
+
+            handleSnackbar(true, `${username} left the meeting`);
+
+        } catch (error) {
+            handleSnackbar(true, error.message || 'Error in updating remote stream.');
+        }
+    }
+
     useEffect(() => {
 
         socket.on('meeting-notification', handleMeetingNotification);
+        socket.on('meeting-chat-message-success', handleNewChatMessage);
+        socket.on('user-left-meeting', handleUserLeft);
+
         socket.on('new-user-join', handleRemoteUser);
         socket.on('new-user-join-call', handleUserJoinCall);
         socket.on('call-accepted-success', handleCallAcceptedSuccess);
@@ -74,6 +113,9 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
 
         return () => {
             socket.off('meeting-notification', handleMeetingNotification);
+            socket.off('meeting-chat-message-success', handleNewChatMessage);
+            socket.off('user-left-meeting', handleUserLeft);
+
             socket.off('new-user-join', handleRemoteUser);
             socket.off('new-user-join-call', handleUserJoinCall);
             socket.off('call-accepted-success', handleCallAcceptedSuccess);
@@ -84,7 +126,6 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
 
     const handleTrackEvent = (e) => {
         const remoteStrm = e.streams[0];
-
         setRemoteStream((prev) => {
             const exists = prev.some((stream) => stream.id === remoteStrm.id);
             if (!exists) {
@@ -107,14 +148,14 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
         peerService.peer.addEventListener('negotiationneeded', handleNegoNeede, { once: true });
 
         return () => {
-            peerService.peer.removeEventListener('track', handleTrackEvent);
-            peerService.peer.removeEventListener('negotiationneeded', handleNegoNeede);
+            if(peerService.peer) {
+                peerService.peer.removeEventListener('track', handleTrackEvent);
+                peerService.peer.removeEventListener('negotiationneeded', handleNegoNeede);
+            }
         }
     }, [remoteSocketData, socket]);
 
-
-
-    const handleMediaDevices = async () => {
+    const handleMediaDevicesOn = async () => {
 
         try {
             setIsLoading(true);
@@ -123,6 +164,7 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
                 video: true,
             });
 
+            myStreamRef.current = stream;
             setMyStream(stream);
         } catch (error) {
             if (error.name === "NotFoundError") {
@@ -130,6 +172,24 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
             }
         } finally {
             setIsLoading(false);
+        }
+    }
+
+    const handleMediaDevicesOff = async () => {
+
+        try {
+
+            myStreamRef.current.getTracks().forEach(track => {
+                if (track.kind === 'video') {
+                    track.stop();
+                }
+            });
+
+            myStreamRef.current = null;
+            setMyStream(null);
+
+        } catch (error) {
+            handleSnackbar(true, error.message || "Error stopping the stream.")
         }
     }
 
@@ -155,23 +215,68 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
 
     useEffect(() => {
         getLocalMeetingData();
-        handleMediaDevices();
+        handleMediaDevicesOn();
 
         return () => {
-            setRemoteStream([]);
-            if (myStream) {
-                myStream.getTracks().forEach((track) => track.stop());
+            if (myStreamRef.current) {
+                myStreamRef.current.getTracks().forEach((track) => track.stop());
             }
-        };
-
+        }
     }, [loginUser]);
+
+    useEffect(() => {
+        setIsJoinMeeting(location.state?.organizer);
+    }, [loginUser, meetingId]);
+
+    const handleLeaveMeeting = () => {
+
+        try {
+            socket.emit('leave-meeting', {
+                meetingId,
+                streamId: myStream.id,
+                username: loginUser.username,
+            });
+    
+            handleMediaDevicesOff();
+    
+            if (peerService.peer) {
+                peerService.peer.getSenders().forEach(sender => {
+                    peerService.peer.removeTrack(sender);
+                });
+                peerService.peer.close();
+                peerService.peer = null;
+            }
+        } catch (error) {
+            handleSnackbar(true, error.message || 'Error leaving the meeting, please try again.')
+        }
+    }
+
+    const handleButtonState = (btn) => {
+
+        if (btn === 'isVideoOn') {
+            if (buttonState.isVideoOn) {
+                handleMediaDevicesOff();
+            } else {
+                handleMediaDevicesOn();
+            }
+        }
+        setButtonState((prev) => ({ ...prev, [btn]: !prev[btn] }));
+    }
+
+    const handleIsJoinMeeting = () => {
+        sendStreams();
+        setIsJoinMeeting(true);
+    }
 
     const handleCommentSubmit = (e) => {
         e.preventDefault();
 
+        socket.emit('meeting-chat-message', {
+            username: loginUser?.username,
+            meetingId,
+            message: meetingMessage,
+        });
     }
-
-    console.log(remoteStream);
 
     if (localMeeting) {
         const diff = (new Date() - new Date(localMeeting.createdAt)) / (1000 * 60); // in minute
@@ -211,11 +316,18 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
                 </div>
             }
 
+            {
+                (remoteStream.length > 0 && !isJoinMeeting) && <div className='bg-[#ffffff26] z-10 flex items-center h-full w-full absolute'>
+                    <button onClick={handleIsJoinMeeting} className='border mx-auto text-orange-300 border-gray-500 px-10 py-2 rounded-full bg-gray-500 hover:bg-gray-800 hover:text-orange-500'>Join</button>
+                </div>
+            }
+
             <div className='h-screen bg-gray-800 flex flex-col'>
 
                 <div className='flex align-items-center justify-end p-4'>
                     <button className="px-3 py-1 text-white">Total Users <span className="ps-1">{10}</span></button>
                     <button
+                        onClick={handleLeaveMeeting}
                         className='border-2 border-red-500 hover:bg-red-500 hover:text-white font-semibold text-red-500 px-3 py-1 rounded-full'
                     >
                         Leave Meeting
@@ -227,14 +339,13 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
                     <div className='flex flex-wrap w-full'>
                         <div className="meeting-videos grid grid-cols-2 md:h-full overflow-y-auto md:w-3/5 lg:w-3/4 gap-5" >
 
-                      
-                                <ReactPlayer
-                                    playing
-                                    muted
-                                    width="100%"
-                                    height={350}
-                                    url={myStream}
-                                />
+                            <ReactPlayer
+                                playing={buttonState.isVideoOn}
+                                muted={!buttonState.isMuteOn}
+                                width="100%"
+                                height={350}
+                                url={myStream}
+                            />
 
                             {remoteStream.map((url, idx) => (
                                 <ReactPlayer
@@ -243,7 +354,7 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
                                     muted
                                     width="100%"
                                     height={350}
-                                    url={myStream}
+                                    url={url}
                                 />
                             ))}
 
@@ -254,7 +365,7 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
                             <div className='flex flex-col border border-gray-600 rounded-xl p-2 h-full relative '>
                                 <ul className='flex-1 overflow-auto'>
                                     {
-                                        [].map((message, idx) => (
+                                        localMeeting.message.map((message, idx) => (
                                             <li key={idx} className='bg-gray-700 py-1 px-2 rounded mb-2' >
                                                 <h1 className='text-lg font-semibold'>{message.user}</h1>
                                                 <p className='text-gray-300'>{message.message}</p>
@@ -263,13 +374,15 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
                                     }
                                 </ul>
 
-                                <form onSubmit={handleCommentSubmit} className="mt-2 border border-gray-500 bg-gray-800 rounded-lg flex items-center sticky left-0 bottom-0">
+                                <form onSubmit={handleCommentSubmit} className="mt-2 p-1 border border-gray-500 bg-gray-800 rounded-lg flex items-center sticky left-0 bottom-0">
                                     <input
                                         type="text"
-                                        className="bg-transparent p-1 flex-grow placeholder-gray-500 outline-0 min-w-14"
+                                        className="bg-transparent flex-grow placeholder-gray-500 outline-0 min-w-14 border-e border-gray-500"
                                         placeholder="Enter message..."
+                                        value={meetingMessage}
+                                        onChange={(e) => setMeetingMessage(e.target.value)}
                                     />
-                                    <button className={`p-1 text-sm me-1 text-white`} type="submit">
+                                    <button type={`${meetingMessage?.length > 0 ? 'submit' : 'button'}`} className={`p-1 text-sm me-1 ${meetingMessage?.length > 0 ? ' text-white' : 'text-gray-500'} `} >
                                         Send
                                     </button>
                                 </form>
@@ -279,7 +392,7 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
                 </div>
 
                 <div className='w-full flex justify-center p-4'>
-                    <MeetingButtons />
+                    <MeetingButtons buttonState={buttonState} handleButtonState={handleButtonState} handleLeaveMeeting={handleLeaveMeeting} />
                 </div>
 
             </div>
@@ -287,3 +400,8 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
         </>
     );
 }
+
+
+
+
+// handle share screen, and how multiple user join meeting etc

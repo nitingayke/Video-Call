@@ -48,7 +48,7 @@ export default function JoinRoom({ loginUser, handleSnackbar }) {
 
         const handleJoinMeetingSuccess = ({ meetingTitle, meetingId }) => {
             const updatedTitle = meetingTitle.split(" ").join("-");
-            navigate(`/meeting-room/${meetingId}/${updatedTitle}`);
+            navigate(`/meeting-room/${meetingId}/${updatedTitle}`, { state: { organizer: false } });
         };
         
         socket.on('join-meeting-success', handleJoinMeetingSuccess);

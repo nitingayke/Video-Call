@@ -4,6 +4,7 @@ import User from "../model/userModel.js";
 import Meeting from "../Model/meetingModel.js";
 
 let connections = {};
+let maxSize = 3;
 
 
 const connectToSocket = (server) => {
@@ -60,8 +61,8 @@ const connectToSocket = (server) => {
                 if (!connections[meetingID]) {
                     return socket.emit('error', { message: "Meeting not found or has ended." });
                 }
-                if (connections[meetingID].length >= 2) {
-                    return socket.emit('error', { message: 'Meeting is full. Limit is 4 participants.' });
+                if (connections[meetingID].length >= maxSize) {
+                    return socket.emit('error', { message: `Meeting is full. Limit is ${maxSize} participants.` });
                 }
 
                 const user = await getUserData(user_id);
@@ -91,17 +92,17 @@ const connectToSocket = (server) => {
                     connections[meetingID].push(socket.id);
                 }
                 socket.emit('join-meeting-success', { status: true, meetingTitle: meeting.title, meetingId: meetingID });
-            
+
             } catch (error) {
                 socket.emit('error', { message: error.message || 'An error occurred while joining the meeting.' });
             }
         });
 
-        socket.on('new-user-call', async({ socketId, offer, username }) => {
+        socket.on('new-user-call', async ({ socketId, offer, username }) => {
             io.to(socketId).emit('new-user-join-call', { offer, from: socket.id, username });
         });
 
-        socket.on('user-call-accepted', ({to, answer}) => {
+        socket.on('user-call-accepted', ({ to, answer }) => {
             io.to(to).emit('call-accepted-success', {
                 from: socket.id,
                 answer
@@ -114,6 +115,49 @@ const connectToSocket = (server) => {
 
         socket.on('peer-nego-done', ({ to, answer }) => {
             io.to(to).emit('peer-nego-done-success', { from: socket.id, answer });
+        });
+
+        socket.on('meeting-chat-message', async({ username, meetingId, message }) => {
+
+            if (!username || !message || !meetingId) {
+                return socket.emit('meeting-notification', {
+                    message: 'Required field not found.'
+                });
+            }
+
+            const meeting = await Meeting.findOne({ meetingId });
+            if (!meeting || !connections[meetingId]) {
+                return socket.emit('meeting-notification', {
+                    message: 'meeting not found, please try again.'
+                });
+            }
+
+            meeting.message.push({ user: username, message });
+            await meeting.save();
+
+            connections[meetingId].forEach(socketId => {
+                io.to(socketId).emit('meeting-chat-message-success', {
+                    username, 
+                    message,
+                });
+            });
+        });
+
+        socket.on('leave-meeting', ({ meetingId, username, streamId }) => {
+
+            if(connections[meetingId]) {
+                connections[meetingId] = connections[meetingId].filter((socketId) => socketId !== socket.id);
+
+                connections[meetingId].forEach(socketId => {
+                    io.to(socketId).emit('user-left-meeting', { socketId: socket.id, username, streamId });
+                });
+
+                return;
+            }
+
+            return socket.emit('meeting-notification', {
+                message: 'Meeting not found, please try again.'
+            });
         });
 
         socket.on("disconnect", () => {

@@ -23,7 +23,7 @@ export default function ScheduleRoom({ loginUser, handleSnackbar, handleIsLoadin
         const handleScheduleMeetingSuccess = ({ status, meetingID, meetingTitle }) => {
             if (status) {
                 const updatedTitle = meetingTitle?.split(" ").join("-");
-                navigate(`/meeting-room/${meetingID}/${updatedTitle}`, { participants: [] });
+                navigate(`/meeting-room/${meetingID}/${updatedTitle}`, { state: { organizer: true } });
             }
         }
 
