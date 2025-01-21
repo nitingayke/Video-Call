@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useLocation, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { getMeetingData } from '../../services/roomService';
 import { socket } from '../../services/socket';
 
@@ -14,6 +14,7 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
 
     const { meetingId, title } = useParams();
     const location = useLocation();
+    const navigate = useNavigate();
     const myStreamRef = useRef(null);
 
     const [localMeeting, setLocalMeeting] = useState(null);
@@ -91,7 +92,6 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
 
             remoteStream((prev) => prev.filter((stream) => stream.id !== streamId));
             setRemoteSocketData((prev) => prev.filter((data) => data.username !== username))
-
             handleSnackbar(true, `${username} left the meeting`);
 
         } catch (error) {
@@ -246,6 +246,9 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
                 peerService.peer.close();
                 peerService.peer = null;
             }
+
+            navigate('/');
+            
         } catch (error) {
             handleSnackbar(true, error.message || 'Error leaving the meeting, please try again.')
         }
@@ -402,6 +405,3 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
 }
 
 
-
-
-// handle share screen, and how multiple user join meeting etc
