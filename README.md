@@ -29,7 +29,11 @@ npm install
 Start the backend server:
 
 ```
-npm start
+node index.js
+```
+or
+```
+nodemon index.js
 ```
 
 ## Note:
