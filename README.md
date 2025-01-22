@@ -64,11 +64,12 @@ npm run dev
 ```
 
 
-## Features
+# Features
 ### Video call functionality using WebRTC.
 ### Real-time chat using Socket.io.
 ### Seamless communication between two users.
-### Technologies Used
+
+# Technologies Used
 ### WebRTC for video calling.
 ### Socket.io for real-time chat.
 ### Node.js and Express.js for backend.
