@@ -10,9 +10,8 @@ let maxSize = 2;
 const connectToSocket = (server) => {
     const io = new Server(server, {
         cors: {
-            // origin: 'http://localhost:5173',
-            // methods: ['GET', 'POST']
-            origin: '*',
+            origin: 'http://localhost:5173',
+            methods: ['GET', 'POST']
         }
     });
 
