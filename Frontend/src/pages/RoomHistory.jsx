@@ -17,8 +17,6 @@ export default function RoomHistory({ loginUser }) {
         setSelectedSection(id);
     }
 
-    console.log(loginUser?.meetingHistory?.created);
-
     const [selectedMeeting, setSelectedMeeting] = useState(null);
 
     return (

@@ -328,7 +328,6 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
             <div className='h-screen bg-gray-800 flex flex-col'>
 
                 <div className='flex align-items-center justify-end p-4'>
-                    <button className="px-3 py-1 text-white">Total Users <span className="ps-1">{10}</span></button>
                     <button
                         onClick={handleLeaveMeeting}
                         className='border-2 border-red-500 hover:bg-red-500 hover:text-white font-semibold text-red-500 px-3 py-1 rounded-full'

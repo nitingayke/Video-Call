@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const loginUser = async (username, password) => {
     try {
-        const response = await axios.post('http://localhost:8000/auth/login', {
+        const response = await axios.post('https://video-call-server-hxw6.onrender.com/auth/login', {
             username,
             password
         });
@@ -14,7 +14,7 @@ const loginUser = async (username, password) => {
 
 const register = async (name, username, password) => {
     try {
-        const response = await axios.post('http://localhost:8000/auth/register', {
+        const response = await axios.post('https://video-call-server-hxw6.onrender.com/auth/register', {
             name,
             username,
             password
@@ -32,7 +32,7 @@ const register = async (name, username, password) => {
 
 const fetchLoginUserProfile = async () => {
     try {
-        const response = await axios.post('http://localhost:8000/auth/user-profile', {
+        const response = await axios.post('https://video-call-server-hxw6.onrender.com/auth/user-profile', {
             token: localStorage.getItem("authToken"),
         });
         return response;

@@ -2,7 +2,7 @@ import axios from "axios";
 
 const getMeetingData = async (meetingID) => {
     try {
-        const response = await axios.get(`http://localhost:8000/meeting/live-meeting/${meetingID}`);
+        const response = await axios.get(`https://video-call-server-hxw6.onrender.com/meeting/live-meeting/${meetingID}`);
         return response;
     } catch (error) {
         return { status: false, error: error?.response?.data?.message || "Error to get live meeting" };
@@ -11,7 +11,7 @@ const getMeetingData = async (meetingID) => {
 
 const getApplicationData = async () => {
     try {
-        const response = await axios.get('http://localhost:8000/application/app-data');
+        const response = await axios.get('https://video-call-server-hxw6.onrender.com/application/app-data');
         return response;
     } catch (error) {
         return null;
