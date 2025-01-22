@@ -1,6 +1,6 @@
 import { Server } from "socket.io";
 import { getMeetingData, getUserData } from "../utils/dataHelper.js";
-import User from "../Model/userModel.js";
+import User from '../Model/userModel.js';
 import Meeting from "../Model/meetingModel.js";
 
 let connections = {};
