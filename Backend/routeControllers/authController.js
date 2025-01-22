@@ -1,4 +1,4 @@
-import User from "../model/userModel.js";
+import User from "../Model/userModel.js";
 import bcryptjs from 'bcryptjs';
 import httpStatus from 'http-status';
 
