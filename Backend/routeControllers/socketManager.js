@@ -1,7 +1,7 @@
 import { Server } from "socket.io";
 import { getMeetingData, getUserData } from "../utils/dataHelper.js";
-import User from '../Model/userModel.js';
-import Meeting from "../Model/meetingModel.js";
+import User from '../model/userModel.js';
+import Meeting from "../model/meetingModel.js";
 
 let connections = {};
 let maxSize = 2;

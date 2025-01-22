@@ -1,4 +1,4 @@
-import Meeting from "../Model/meetingModel.js";
+import Meeting from "../model/meetingModel.js";
 import httpStatus from "http-status";
 
 const getLiveMeeting = async (req, res) => {

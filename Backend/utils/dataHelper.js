@@ -1,5 +1,5 @@
-import Meeting from "../Model/meetingModel.js";
-import User from "../Model/userModel.js";
+import Meeting from "../model/meetingModel.js";
+import User from "../model/userModel.js";
 
 const getUserData = async (user_id) => {
     try {
