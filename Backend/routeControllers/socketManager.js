@@ -4,7 +4,7 @@ import User from "../model/userModel.js";
 import Meeting from "../Model/meetingModel.js";
 
 let connections = {};
-let maxSize = 3;
+let maxSize = 2;
 
 
 const connectToSocket = (server) => {
