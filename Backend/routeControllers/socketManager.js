@@ -10,7 +10,7 @@ let maxSize = 2;
 const connectToSocket = (server) => {
     const io = new Server(server, {
         cors: {
-            origin: 'http://localhost:5173',
+            origin: 'https://video-meeting-nu.vercel.app',
             methods: ['GET', 'POST']
         }
     });
