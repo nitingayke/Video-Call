@@ -64,16 +64,14 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
 
     const sendStreams = () => {
         try {
-            myStream.getAudioTracks().forEach(track => {
-                peerService.peer.addTrack(track, myStream);
-            });
-            myStream.getVideoTracks().forEach(track => {
+            myStream.getTracks().forEach(track => {
                 peerService.peer.addTrack(track, myStream);
             });
         } catch (error) {
-            handleSnackbar(true, error.message || 'error occured, please try again.')
+            handleSnackbar(true, error.message || 'Error occurred, please try again.');
         }
-    }
+    };
+
 
 
     const handleCallAcceptedSuccess = async ({ from, answer }) => {
@@ -137,7 +135,8 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
             }
             return prev;
         });
-    }
+    };
+
 
     const handleNegoNeede = async () => {
         const offer = await peerService.getOffer();
@@ -358,7 +357,6 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
                                 <ReactPlayer
                                     key={idx}
                                     playing
-                                    muted
                                     width="100%"
                                     height={350}
                                     url={url}
