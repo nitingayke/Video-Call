@@ -285,13 +285,6 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
         });
     }
 
-    console.log(myStream?.getTracks());
-    console.log(myStream?.getAudioTracks());
-    const audioTrack = myStream.getAudioTracks()[0];
-    if (audioTrack) {
-        console.log('Audio Track Enabled:', audioTrack.enabled);
-    }
-
     if (localMeeting) {
         const diff = (new Date() - new Date(localMeeting.createdAt)) / (1000 * 60); // in minute
         if (diff > localMeeting.duration * 60) {
@@ -324,11 +317,6 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
 
     return (
         <>
-            {remoteStream.length > 0 && (
-                <audio autoPlay controls>
-                    <source src={URL.createObjectURL(remoteStream[0])} type="audio/webm" />
-                </audio>
-            )}
 
             {
                 !loginUser && <div className='absolute flex flex-col justify-center items-center h-screen w-full z-10 bg-gray-700 opacity-50'>
