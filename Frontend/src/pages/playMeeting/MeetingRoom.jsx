@@ -64,13 +64,17 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
 
     const sendStreams = () => {
         try {
-            for (const track of myStream.getTracks()) {
+            myStream.getAudioTracks().forEach(track => {
                 peerService.peer.addTrack(track, myStream);
-            }
+            });
+            myStream.getVideoTracks().forEach(track => {
+                peerService.peer.addTrack(track, myStream);
+            });
         } catch (error) {
             handleSnackbar(true, error.message || 'error occured, please try again.')
         }
     }
+
 
     const handleCallAcceptedSuccess = async ({ from, answer }) => {
         await peerService.setLocalDescription(answer);
@@ -148,7 +152,7 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
         peerService.peer.addEventListener('negotiationneeded', handleNegoNeede, { once: true });
 
         return () => {
-            if(peerService.peer) {
+            if (peerService.peer) {
                 peerService.peer.removeEventListener('track', handleTrackEvent);
                 peerService.peer.removeEventListener('negotiationneeded', handleNegoNeede);
             }
@@ -236,9 +240,9 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
                 streamId: myStream.id,
                 username: loginUser.username,
             });
-    
+
             handleMediaDevicesOff();
-    
+
             if (peerService.peer) {
                 peerService.peer.getSenders().forEach(sender => {
                     peerService.peer.removeTrack(sender);
@@ -248,7 +252,7 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
             }
 
             navigate('/');
-            
+
         } catch (error) {
             handleSnackbar(true, error.message || 'Error leaving the meeting, please try again.')
         }
@@ -279,6 +283,13 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
             meetingId,
             message: meetingMessage,
         });
+    }
+
+    console.log(myStream?.getTracks());
+    console.log(myStream?.getAudioTracks());
+    const audioTrack = myStream.getAudioTracks()[0];
+    if (audioTrack) {
+        console.log('Audio Track Enabled:', audioTrack.enabled);
     }
 
     if (localMeeting) {
@@ -313,6 +324,12 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
 
     return (
         <>
+            {remoteStream.length > 0 && (
+                <audio autoPlay controls>
+                    <source src={URL.createObjectURL(remoteStream[0])} type="audio/webm" />
+                </audio>
+            )}
+
             {
                 !loginUser && <div className='absolute flex flex-col justify-center items-center h-screen w-full z-10 bg-gray-700 opacity-50'>
                     <CircularProgress size="3rem" />

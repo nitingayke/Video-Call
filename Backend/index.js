@@ -23,7 +23,7 @@ connectToSocket(server);
 app.use(cookieParser()); 
 
 app.use(cors({
-    origin: 'https://video-meeting-nu.vercel.app',
+    origin: ['https://video-meeting-nu.vercel.app', 'http://localhost:5173/'],
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
 }));
