@@ -347,7 +347,7 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
 
                             <ReactPlayer
                                 playing={buttonState.isVideoOn}
-                                muted={!buttonState.isMuteOn}
+                                muted={true}
                                 width="100%"
                                 height={350}
                                 url={myStream}
