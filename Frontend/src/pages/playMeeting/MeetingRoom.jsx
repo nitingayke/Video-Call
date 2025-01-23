@@ -357,6 +357,7 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
                                 <ReactPlayer
                                     key={idx}
                                     playing
+                                    muted={!buttonState.isMuteOn}
                                     width="100%"
                                     height={350}
                                     url={url}
