@@ -25,7 +25,7 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
     const [isLoading, setIsLoading] = useState(false);
     const [isJoinMeeting, setIsJoinMeeting] = useState(false);
     const [meetingMessage, setMeetingMessage] = useState("");
-    const [buttonState, setButtonState] = useState({ isMuteOn: false, isVideoOn: true, isShareOn: false });
+    const [buttonState, setButtonState] = useState({ isMuteOn: false, isVideoOn: true }); 
 
 
     const handleMeetingNotification = ({ message }) => {
@@ -269,10 +269,6 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
                     videoTrack.enabled = true;
                 }
             }
-        }
-
-        if (btn === 'isShareOn') {
-            
         }
 
         setButtonState((prev) => ({ ...prev, [btn]: !prev[btn] }));

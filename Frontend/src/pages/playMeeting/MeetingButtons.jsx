@@ -9,6 +9,7 @@ import VideocamOffOutlinedIcon from '@mui/icons-material/VideocamOffOutlined';
 import CancelPresentationOutlinedIcon from '@mui/icons-material/CancelPresentationOutlined';
 
 export default function MeetingButtons({ buttonState, handleButtonState, handleLeaveMeeting }) {
+
     return (
         <ul className='flex space-x-5'>
             <li>
@@ -22,14 +23,10 @@ export default function MeetingButtons({ buttonState, handleButtonState, handleL
             <li>
                 <button onClick={() => handleButtonState('isVideoOn')} className='bg-gray-700 text-white w-10 h-10 rounded-full'>
                     {
-                        buttonState?.isVideoOn ? <Tooltip title="Turn Off Video"><VideocamOutlinedIcon className="text-green-400" /></Tooltip>
+                        buttonState?.isVideoOn 
+                        ? <Tooltip title="Turn Off Video"><VideocamOutlinedIcon className="text-green-400" /></Tooltip>
                             : <Tooltip title="Turn On Video"><VideocamOffOutlinedIcon /></Tooltip>
                     }
-                </button>
-            </li>
-            <li>
-                <button onClick={() => handleButtonState('isShareOn')} className='bg-gray-700 text-white w-10 h-10 rounded-full'>
-                    <Tooltip title="Not Implemented"><CancelPresentationOutlinedIcon className='text-gray-500' /></Tooltip>
                 </button>
             </li>
             <li>
