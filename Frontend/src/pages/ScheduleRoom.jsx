@@ -90,7 +90,7 @@ export default function ScheduleRoom({ loginUser, handleSnackbar, handleIsLoadin
             - ID: ${meetingID}
             - Password: ${meetingPassword}
 
-            Join the meeting: http://localhost:5173/join-meeting `;
+            Join the meeting: https://video-meeting-nu.vercel.app/join-meeting `;
 
         const encodedMessage = encodeURIComponent(message);
         const whatsappURL = `https://wa.me/?text=${encodedMessage}`;

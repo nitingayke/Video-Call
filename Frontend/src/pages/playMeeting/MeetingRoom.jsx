@@ -138,7 +138,7 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
     };
 
 
-    const handleNegoNeede = async () => {
+    const handleNegoNeeded = async () => {
         const offer = await peerService.getOffer();
         remoteSocketData.forEach(socketData => {
             socket.emit('peer-nego-needed', { offer, to: socketData.socketId });
@@ -148,12 +148,12 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
     useEffect(() => {
 
         peerService.peer.addEventListener('track', handleTrackEvent);
-        peerService.peer.addEventListener('negotiationneeded', handleNegoNeede, { once: true });
+        peerService.peer.addEventListener('negotiationneeded', handleNegoNeeded, { once: true });
 
         return () => {
             if (peerService.peer) {
                 peerService.peer.removeEventListener('track', handleTrackEvent);
-                peerService.peer.removeEventListener('negotiationneeded', handleNegoNeede);
+                peerService.peer.removeEventListener('negotiationneeded', handleNegoNeeded);
             }
         }
     }, [remoteSocketData, socket]);
@@ -169,6 +169,10 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
 
             myStreamRef.current = stream;
             setMyStream(stream);
+
+            sendStreams();
+
+            handleNegoNeeded();
         } catch (error) {
             if (error.name === "NotFoundError") {
                 handleSnackbar(true, "No camera or microphone found.");
@@ -178,30 +182,12 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
         }
     }
 
-    const handleMediaDevicesOff = async () => {
-
-        try {
-
-            myStreamRef.current.getTracks().forEach(track => {
-                if (track.kind === 'video') {
-                    track.stop();
-                }
-            });
-
-            myStreamRef.current = null;
-            setMyStream(null);
-
-        } catch (error) {
-            handleSnackbar(true, error.message || "Error stopping the stream.")
-        }
-    }
-
     const getLocalMeetingData = async () => {
         try {
             setIsLoading(true);
             const response = await getMeetingData(meetingId);
 
-            if (response.status === 200) {
+            if (response?.status === 200) {
                 setLocalMeeting({
                     ...response.data.currMeeting,
                     message: response.data.currMeeting.message.reverse(),
@@ -240,7 +226,19 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
                 username: loginUser.username,
             });
 
-            handleMediaDevicesOff();
+            if (myStreamRef.current) {
+                myStreamRef.current.getTracks().forEach((track) => {
+                    track.stop();
+                    peerService.peer.getSenders().forEach((sender) => {
+                        if (sender.track === track) {
+                            peerService.peer.removeTrack(sender);
+                        }
+                    })
+                });
+
+                myStreamRef.current = null;
+                setMyStream(null);
+            }
 
             if (peerService.peer) {
                 peerService.peer.getSenders().forEach(sender => {
@@ -261,11 +259,22 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
 
         if (btn === 'isVideoOn') {
             if (buttonState.isVideoOn) {
-                handleMediaDevicesOff();
+                const videoTrack = myStream.getVideoTracks()[0];
+                if (videoTrack) {
+                    videoTrack.enabled = false;
+                }
             } else {
-                handleMediaDevicesOn();
+                const videoTrack = myStream.getVideoTracks()[0];
+                if (videoTrack) {
+                    videoTrack.enabled = true;
+                }
             }
         }
+
+        if (btn === 'isShareOn') {
+            
+        }
+
         setButtonState((prev) => ({ ...prev, [btn]: !prev[btn] }));
     }
 
@@ -357,7 +366,7 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
                                 <ReactPlayer
                                     key={idx}
                                     playing
-                                    muted={buttonState.isMuteOn}
+                                    muted={!buttonState.isMuteOn}
                                     width="100%"
                                     height={350}
                                     url={url}
