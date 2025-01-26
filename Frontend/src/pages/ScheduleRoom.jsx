@@ -41,7 +41,7 @@ export default function ScheduleRoom({ loginUser, handleSnackbar, handleIsLoadin
 
         if (name === "duration" && value > 12) {
             document.querySelector(".display-error").innerText = "Duration is too long. Set it to less than 6 hours.";
-            handleSnackbar(true, "Duration is too long. Set it to less than 6 hours.")
+            handleSnackbar(true, "Duration is too long. Set it to less than 12 hours.")
             return;
         }
 

@@ -163,7 +163,7 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
         try {
             setIsLoading(true);
             const stream = await navigator.mediaDevices.getUserMedia({
-                audio: true,
+                audio: false,
                 video: true,
             });
 
@@ -258,17 +258,14 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
     const handleButtonState = (btn) => {
 
         if (btn === 'isVideoOn') {
-            if (buttonState.isVideoOn) {
-                const videoTrack = myStream.getVideoTracks()[0];
-                if (videoTrack) {
-                    videoTrack.enabled = false;
-                }
-            } else {
-                const videoTrack = myStream.getVideoTracks()[0];
-                if (videoTrack) {
-                    videoTrack.enabled = true;
-                }
+            const videoTrack = myStream.getVideoTracks()[0];
+            if (videoTrack) {
+                videoTrack.enabled = !buttonState.isVideoOn;
             }
+        }
+
+        if(btn == 'isMuteOn') {
+            myStream.getAudioTracks().forEach(track => track.enabled = !buttonState.isMuteOn);
         }
 
         setButtonState((prev) => ({ ...prev, [btn]: !prev[btn] }));
@@ -362,7 +359,7 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
                                 <ReactPlayer
                                     key={idx}
                                     playing
-                                    muted={!buttonState.isMuteOn}
+                                    // muted={false}
                                     width="100%"
                                     height={350}
                                     url={url}
