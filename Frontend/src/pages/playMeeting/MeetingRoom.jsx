@@ -25,7 +25,7 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
     const [isLoading, setIsLoading] = useState(false);
     const [isJoinMeeting, setIsJoinMeeting] = useState(false);
     const [meetingMessage, setMeetingMessage] = useState("");
-    const [buttonState, setButtonState] = useState({ isMuteOn: false, isVideoOn: true }); 
+    const [buttonState, setButtonState] = useState({ isMuteOn: true, isVideoOn: true }); 
 
 
     const handleMeetingNotification = ({ message }) => {
@@ -163,7 +163,7 @@ export default function MeetingRoom({ loginUser, handleSnackbar }) {
         try {
             setIsLoading(true);
             const stream = await navigator.mediaDevices.getUserMedia({
-                audio: false,
+                audio: true,
                 video: true,
             });
 
